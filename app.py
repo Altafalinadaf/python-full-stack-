@@ -1,20 +1,55 @@
-from flask import Flask,render_template
+from flask import Flask, request, jsonify, render_template
+import sqlite3
 
 app = Flask(__name__)
 
+# Database setup
+def get_db_connection():
+    conn = sqlite3.connect('tasks.db')
+    conn.row_factory = sqlite3.Row
+    return conn
 
+# Initialize the database
+def init_db():
+    with get_db_connection() as conn:
+        conn.execute('''
+            CREATE TABLE IF NOT EXISTS tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                task TEXT NOT NULL
+            )
+        ''')
+        conn.commit()
+
+# Route to serve the front-end
 @app.route('/')
-def home():
-    return render_template ('home.html')
+def index():
+    return render_template('index.html')
 
-@app.route('/about')
-def about():
-    return render_template ('about.html')
+# Route to add a new task
+@app.route('/add-task', methods=['POST'])
+def add_task():
+    data = request.get_json()
+    task = data.get('task')
 
-@app.route('/contact')
-def contact():
-    return render_template('contact.html')
+    if not task:
+        return jsonify({'message': 'Task cannot be empty!'}), 400
 
+    with get_db_connection() as conn:
+        conn.execute('INSERT INTO tasks (task) VALUES (?)', (task,))
+        conn.commit()
 
-if __name__=="__main__":
+    return jsonify({'message': 'Task added successfully!'})
+
+# Route to fetch all tasks
+@app.route('/tasks', methods=['GET'])
+def get_tasks():
+    with get_db_connection() as conn:
+        tasks = conn.execute('SELECT * FROM tasks').fetchall()
+        tasks_list = [dict(task) for task in tasks]
+    return jsonify(tasks_list)
+
+# Initialize the database
+init_db()
+
+if __name__ == '__main__':
     app.run(debug=True)
