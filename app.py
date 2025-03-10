@@ -48,6 +48,28 @@ def get_tasks():
         tasks_list = [dict(task) for task in tasks]
     return jsonify(tasks_list)
 
+# Route to delete a task
+@app.route('/delete-task/<int:task_id>', methods=['DELETE'])
+def delete_task(task_id):
+    with get_db_connection() as conn:
+        conn.execute('DELETE FROM tasks WHERE id = ?', (task_id,))
+        conn.commit()
+    return jsonify({'message': 'Task deleted successfully!'})
+
+# Route to update a task
+@app.route('/update-task/<int:task_id>', methods=['PUT'])
+def update_task(task_id):
+    data = request.get_json()
+    new_task = data.get('task')
+
+    if not new_task:
+        return jsonify({'message': 'Task cannot be empty!'}), 400
+
+    with get_db_connection() as conn:
+        conn.execute('UPDATE tasks SET task = ? WHERE id = ?', (new_task, task_id))
+        conn.commit()
+    return jsonify({'message': 'Task updated successfully!'})
+
 # Initialize the database
 init_db()
 
